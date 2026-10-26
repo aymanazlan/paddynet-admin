@@ -191,9 +191,22 @@
             <div class="tiles tiles-3" id="model-metrics"></div>
           </div>
           <div class="card">
-            <h2>Confusion matrix (test set, with TTA)</h2>
-            <img id="cm-image" class="cm" src="assets/confusion_matrix_tta.png" alt="Confusion matrix of PaddyNet on the test set with TTA">
-            <p id="cm-missing" class="muted small" hidden>Copy <code>confusion_matrix_tta.png</code> from your Drive (PaddyNet-Project/models) into the dashboard's <code>assets</code> folder to show it here.</p>
+            <div class="card-head">
+              <h2>Test results by disease</h2>
+              <div class="seg" role="group" aria-label="Test-time augmentation">
+                <button type="button" class="seg-btn active" data-cm="tta">With TTA</button>
+                <button type="button" class="seg-btn" data-cm="single">Without TTA</button>
+              </div>
+            </div>
+            <p class="muted small" id="cm-caption">Confusion matrix on the test set. Rows are the true disease, columns are what the model said.</p>
+            <div id="cm-table"></div>
+            <table class="table" id="class-metrics">
+              <thead><tr><th>Disease</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th class="num">Images</th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <div id="cm-images" hidden>
+              <img class="cm" src="assets/confusion_matrix_tta.png" alt="Confusion matrix of PaddyNet on the test set with TTA">
+            </div>
           </div>
         </div>
         <div class="grid-2">

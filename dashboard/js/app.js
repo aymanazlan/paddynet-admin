@@ -34,6 +34,7 @@
     page: "overview",
     scanPage: 0,
     hiddenOnMap: new Set(),
+    cmMode: "tta",
     loadedAt: null,
   };
   let trendChart = null;
@@ -551,6 +552,8 @@
       $("model-metrics").innerHTML = "";
     }
 
+    renderConfusion(current);
+
     // In the field
     const scans = scansInRange();
     const conf = scans.map((s) => s.confidence);
@@ -619,6 +622,55 @@
           <td>${m.is_current ? "<b>In the app now</b>" : "Older"}</td></tr>`).join("");
   }
 
+  /** Confusion matrix as a shaded table, plus precision, recall and F1 per disease. */
+  function renderConfusion(model) {
+    const tta = state.cmMode === "tta";
+    document.querySelectorAll(".seg-btn[data-cm]").forEach((b) => b.classList.toggle("active", b.dataset.cm === state.cmMode));
+    const matrix = model && (tta ? model.confusion_matrix_tta : model.confusion_matrix);
+    const valid = Array.isArray(matrix) && matrix.length === LABELS.length && matrix.every((r) => Array.isArray(r) && r.length === LABELS.length);
+    $("cm-images").hidden = valid;
+    $("cm-table").hidden = !valid;
+    $("class-metrics").hidden = !valid;
+    if (!valid) return;
+
+    const n = LABELS.length;
+    const rowSum = matrix.map((r) => r.reduce((a, b) => a + b, 0));
+    const colSum = LABELS.map((_, j) => matrix.reduce((a, r) => a + r[j], 0));
+    const total = rowSum.reduce((a, b) => a + b, 0);
+    const correct = matrix.reduce((a, r, i) => a + r[i], 0);
+    const short = { "Bacterial Leaf Blight": "BLB", "Blast": "Blast", "Brown Spot": "Brown Spot", "Normal": "Normal" };
+
+    let html = `<table class="cm-grid"><thead><tr><th></th>${LABELS.map((l) => `<th>${escapeHtml(short[l])}</th>`).join("")}</tr></thead><tbody>`;
+    for (let i = 0; i < n; i++) {
+      html += `<tr><th class="row-head">${escapeHtml(short[LABELS[i]])}</th>`;
+      for (let j = 0; j < n; j++) {
+        const v = matrix[i][j];
+        const share = rowSum[i] ? v / rowSum[i] : 0; // shade by share of the true class
+        const pct = Math.round(Math.max(share, v > 0 ? 0.06 : 0) * 100);
+        const ink = share > 0.5 ? "var(--seq-ink)" : "var(--text)";
+        html += `<td class="${i === j ? "diag" : ""}" style="background:color-mix(in srgb, var(--seq) ${pct}%, transparent);color:${ink}"
+          title="True ${escapeHtml(LABELS[i])}, predicted ${escapeHtml(LABELS[j])}: ${v} of ${rowSum[i]} (${fmtPct(share)})">${v}</td>`;
+      }
+      html += "</tr>";
+    }
+    html += `</tbody></table><p class="cm-axis">${fmtInt(correct)} of ${fmtInt(total)} test images correct = ${fmtPct(correct / total, 2)}</p>`;
+    $("cm-table").innerHTML = html;
+    $("cm-caption").textContent = `Confusion matrix on the test set${tta ? " with TTA (original, flip, brightness)" : " (single view)"}. Rows are the true disease, columns are what the model said.`;
+
+    const rows = LABELS.map((label, i) => {
+      const p = colSum[i] ? matrix[i][i] / colSum[i] : 0;
+      const r = rowSum[i] ? matrix[i][i] / rowSum[i] : 0;
+      const f1 = p + r ? (2 * p * r) / (p + r) : 0;
+      return { label, p, r, f1, images: rowSum[i] };
+    });
+    const avg = (k) => rows.reduce((a, x) => a + x[k], 0) / rows.length;
+    $("class-metrics").innerHTML = `<thead><tr><th>Disease</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th class="num">Images</th></tr></thead>
+      <tbody>${rows.map((x) => `<tr><td>${swatch(x.label)}${escapeHtml(x.label)}</td><td class="num">${fmtPct(x.p)}</td>
+        <td class="num">${fmtPct(x.r)}</td><td class="num">${fmtPct(x.f1)}</td><td class="num">${fmtInt(x.images)}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td>Average (macro)</td><td class="num">${fmtPct(avg("p"))}</td><td class="num">${fmtPct(avg("r"))}</td>
+        <td class="num">${fmtPct(avg("f1"))}</td><td class="num">${fmtInt(total)}</td></tr></tfoot>`;
+  }
+
   function describeDelay(ms) {
     if (ms < 60 * 1000) return "under a minute";
     if (ms < 3600 * 1000) return `${Math.round(ms / 60000)} min`;
@@ -654,10 +706,10 @@
     $("s-prev").addEventListener("click", () => { state.scanPage -= 1; renderScans(); });
     $("s-next").addEventListener("click", () => { state.scanPage += 1; renderScans(); });
     $("csv-button").addEventListener("click", downloadCsv);
-    const cm = $("cm-image");
-    const cmMissing = () => { cm.hidden = true; $("cm-missing").hidden = false; };
-    cm.addEventListener("error", cmMissing);
-    if (cm.complete && cm.naturalWidth === 0) cmMissing(); // failed before this script ran
+    document.querySelectorAll(".seg-btn[data-cm]").forEach((b) => b.addEventListener("click", () => {
+      state.cmMode = b.dataset.cm;
+      renderModel();
+    }));
     initAuth();
   }
 
