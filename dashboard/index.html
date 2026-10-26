@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaddyNet Admin</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="logo" viewBox="0 0 100 100">
+      <path class="logo-mark" d="M18,34 V22 A4,4 0 0,1 22,18 H34 M66,18 H78 A4,4 0 0,1 82,22 V34 M82,66 V78 A4,4 0 0,1 78,82 H66 M34,82 H22 A4,4 0 0,1 18,78 V66" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path class="logo-mark" d="M48,80 C48,64 50,46 58,30" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <g class="logo-grain">
+        <ellipse cx="60" cy="25" rx="5" ry="8.5" transform="rotate(25 60 25)"/>
+        <ellipse cx="45" cy="40" rx="5" ry="8.5" transform="rotate(-35 45 40)"/>
+        <ellipse cx="60" cy="45" rx="5" ry="8.5" transform="rotate(40 60 45)"/>
+        <ellipse cx="42" cy="55" rx="5" ry="8.5" transform="rotate(-35 42 55)"/>
+        <ellipse cx="56" cy="60" rx="5" ry="8.5" transform="rotate(40 56 60)"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <!-- Login -->
+  <main id="login-view" class="login" hidden>
+    <form id="login-form" class="login-card">
+      <div class="brand brand-lg">
+        <svg class="logo"><use href="#logo"/></svg>
+        <span class="wordmark">Paddy<b>Net</b></span>
+      </div>
+      <h1>Admin dashboard</h1>
+      <p class="muted">Sign in with the admin account you made in Supabase.</p>
+      <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
+      <label>Password<input id="login-password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" class="btn btn-primary" id="login-button">Sign in</button>
+      <p id="login-error" class="error" role="alert" hidden></p>
+      <p id="config-warning" class="warning" hidden>
+        The dashboard is not connected yet. Put your Supabase URL and key in <code>js/config.js</code>.
+      </p>
+    </form>
+  </main>
+
+  <!-- App -->
+  <div id="app-view" class="shell" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <svg class="logo"><use href="#logo"/></svg>
+        <span class="wordmark">Paddy<b>Net</b></span>
+        <span class="tag">Admin</span>
+      </div>
+      <nav id="nav">
+        <a href="#overview" data-page="overview">Overview</a>
+        <a href="#trends" data-page="trends">Trends</a>
+        <a href="#map" data-page="map">Map</a>
+        <a href="#alerts" data-page="alerts">Alerts <span id="nav-alert-count" class="badge" hidden></span></a>
+        <a href="#scans" data-page="scans">Scans</a>
+        <a href="#model" data-page="model">Model &amp; System</a>
+      </nav>
+      <div class="sidebar-foot">
+        <p class="muted small" id="signed-in-as"></p>
+        <button class="btn btn-ghost" id="theme-button" type="button">Dark mode</button>
+        <button class="btn btn-ghost" id="logout-button" type="button">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <h1 id="page-title">Overview</h1>
+        <div class="filters">
+          <label class="small muted" for="range">Period</label>
+          <select id="range">
+            <option value="7">Last 7 days</option>
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last 12 months</option>
+            <option value="0">All time</option>
+          </select>
+          <button class="btn" id="refresh-button" type="button">Refresh</button>
+          <span class="small muted" id="last-loaded"></span>
+        </div>
+      </header>
+      <p id="load-error" class="error banner" role="alert" hidden></p>
+
+      <!-- Overview -->
+      <section class="page" id="page-overview">
+        <div class="tiles">
+          <div class="tile"><span class="tile-label">Scans</span><span class="tile-value" id="t-total">–</span><span class="tile-sub" id="t-total-sub"></span></div>
+          <div class="tile"><span class="tile-label">With disease</span><span class="tile-value" id="t-diseased">–</span><span class="tile-sub" id="t-diseased-sub"></span></div>
+          <div class="tile"><span class="tile-label">Phones sharing</span><span class="tile-value" id="t-devices">–</span><span class="tile-sub">different app installs</span></div>
+          <div class="tile"><span class="tile-label">Areas reporting</span><span class="tile-value" id="t-areas">–</span><span class="tile-sub" id="t-areas-sub"></span></div>
+          <div class="tile tile-alert"><span class="tile-label">Outbreak alerts</span><span class="tile-value" id="t-alerts">–</span><span class="tile-sub">last 14 days</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h2>Results by disease</h2>
+            <div id="split-bars" class="hbars"></div>
+          </div>
+          <div class="card">
+            <h2>Latest scans</h2>
+            <ul id="latest-list" class="list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trends -->
+      <section class="page" id="page-trends" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2 id="trend-title">Scans per week</h2>
+            <div id="trend-legend" class="legend"></div>
+          </div>
+          <div class="chart-box"><canvas id="trend-chart" aria-label="Scans over time by disease" role="img"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Areas with the most disease</h2>
+          <p class="muted small">Based on the farm or area name farmers typed in their Profile.</p>
+          <table class="table" id="area-table">
+            <thead><tr><th>Area</th><th class="num">Scans</th><th class="num">With disease</th><th>Most common disease</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Map -->
+      <section class="page" id="page-map" hidden>
+        <div class="card card-flush">
+          <div class="card-head pad">
+            <h2>Reports on the map</h2>
+            <div id="map-legend" class="legend legend-toggle"></div>
+          </div>
+          <div id="map"></div>
+          <p class="muted small pad">Only scans with location are shown (farmers who turned on location). Locations are rounded to about 100 m. Dashed circles are outbreak alerts (1 km).</p>
+        </div>
+      </section>
+
+      <!-- Alerts -->
+      <section class="page" id="page-alerts" hidden>
+        <div class="card">
+          <h2>Possible outbreaks</h2>
+          <p class="muted">An alert shows when at least <b id="rule-min">3</b> scans of the same disease are within <b id="rule-radius">1</b> km of each other in the last <b id="rule-days">14</b> days. It is an early warning to check the field, not a confirmed outbreak.</p>
+          <form id="alert-form" class="inline-form">
+            <label>Min scans <input type="number" id="a-min" min="2" max="50" value="3"></label>
+            <label>Within (km) <input type="number" id="a-radius" min="0.2" max="20" step="0.1" value="1"></label>
+            <label>Last (days) <input type="number" id="a-days" min="1" max="90" value="14"></label>
+            <button class="btn" type="submit">Check again</button>
+          </form>
+          <table class="table" id="alert-table">
+            <thead><tr><th>Disease</th><th>Area</th><th class="num">Scans</th><th>First seen</th><th>Last seen</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p id="alert-empty" class="empty" hidden>No outbreak alerts right now.</p>
+        </div>
+      </section>
+
+      <!-- Scans -->
+      <section class="page" id="page-scans" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>All shared scans</h2>
+            <div class="inline-form">
+              <select id="s-label">
+                <option value="">All results</option>
+              </select>
+              <input type="search" id="s-search" placeholder="Search area or app version">
+              <button class="btn" id="csv-button" type="button">Download CSV</button>
+            </div>
+          </div>
+          <table class="table" id="scan-table">
+            <thead><tr><th>Date</th><th>Result</th><th class="num">Confidence</th><th>Area</th><th>Location</th><th>TTA</th><th>App</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="pager">
+            <button class="btn" id="s-prev" type="button">Previous</button>
+            <span class="small muted" id="s-page"></span>
+            <button class="btn" id="s-next" type="button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Model & System -->
+      <section class="page" id="page-model" hidden>
+        <div class="grid-2">
+          <div class="card">
+            <h2>AI model in the app</h2>
+            <dl class="facts" id="model-facts"></dl>
+            <div class="tiles tiles-3" id="model-metrics"></div>
+          </div>
+          <div class="card">
+            <h2>Confusion matrix (test set, with TTA)</h2>
+            <img id="cm-image" class="cm" src="assets/confusion_matrix_tta.png" alt="Confusion matrix of PaddyNet on the test set with TTA">
+            <p id="cm-missing" class="muted small" hidden>Copy <code>confusion_matrix_tta.png</code> from your Drive (PaddyNet-Project/models) into the dashboard's <code>assets</code> folder to show it here.</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h2>How the model does in the field</h2>
+            <p class="muted small">From shared scans in the chosen period. There is no "correct answer" for field photos, so these show confidence, not accuracy.</p>
+            <dl class="facts" id="field-facts"></dl>
+          </div>
+          <div class="card">
+            <h2>System</h2>
+            <dl class="facts" id="system-facts"></dl>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h2>App versions in use</h2>
+            <table class="table" id="app-version-table">
+              <thead><tr><th>App version</th><th class="num">Phones</th><th class="num">Scans</th><th>Last scan</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h2>Model versions</h2>
+            <table class="table" id="model-version-table">
+              <thead><tr><th>Version</th><th class="num">Test acc.</th><th class="num">With TTA</th><th class="num">Scans</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
