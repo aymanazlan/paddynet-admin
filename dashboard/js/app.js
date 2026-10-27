@@ -129,11 +129,35 @@
     }
   }
 
+  // Login background: two designs to compare. 1 = card in the middle, 2 = card on the left.
+  // Pick with the switcher or ?look=2. Remove the one not chosen later.
+  const LOOKS = { "1": "assets/login-bg-1", "2": "assets/login-bg-2" };
+  let look = new URLSearchParams(location.search).get("look");
+  if (!LOOKS[look]) {
+    try { look = localStorage.getItem("paddynet-login-look"); } catch (e) { look = null; }
+  }
+  if (!LOOKS[look]) look = "1";
+
+  function setLook(value) {
+    look = value;
+    try { localStorage.setItem("paddynet-login-look", value); } catch (e) {}
+    $("login-view").classList.toggle("look-2", value === "2");
+    document.querySelectorAll(".look-switch button").forEach(b =>
+      b.classList.toggle("active", b.dataset.look === value));
+    const video = $("login-video");
+    video.poster = LOOKS[value] + ".jpg";
+    video.src = LOOKS[value] + ".mp4";
+    playLoginVideo(!$("login-view").hidden);
+  }
+  document.querySelectorAll(".look-switch button").forEach(b =>
+    b.addEventListener("click", () => setLook(b.dataset.look)));
+
   // Background video only plays while the login page is showing (saves battery and CPU)
   function playLoginVideo(on) {
     const video = $("login-video");
     if (!video) return;
     if (on && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (!video.getAttribute("src")) return setLook(look);
       video.play().catch(() => {});
     } else {
       video.pause();

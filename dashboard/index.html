@@ -28,10 +28,7 @@
 
   <!-- Login -->
   <main id="login-view" class="login" hidden>
-    <video id="login-video" class="login-bg" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-      <source src="assets/login-bg.webm" type="video/webm">
-      <source src="assets/login-bg.mp4" type="video/mp4">
-    </video>
+    <video id="login-video" class="login-bg" muted loop playsinline preload="auto" aria-hidden="true"></video>
     <div class="login-overlay" aria-hidden="true"></div>
     <form id="login-form" class="login-card">
       <div class="brand brand-lg">
@@ -48,6 +45,12 @@
         The dashboard is not connected yet. Put your Supabase URL and key in <code>js/config.js</code>.
       </p>
     </form>
+    <!-- Temporary: switch between the two login designs to compare them -->
+    <div class="look-switch" role="group" aria-label="Login design">
+      <span>Design</span>
+      <button type="button" data-look="1">1 · Center</button>
+      <button type="button" data-look="2">2 · Left</button>
+    </div>
   </main>
 
   <!-- App -->
