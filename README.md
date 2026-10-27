@@ -6,12 +6,15 @@ paddynet-admin/
   supabase/01_schema.sql database tables, security rules, outbreak alert check
   supabase/02_upload_function.sql  submit_scans(): how the app adds scans (run after 01)
   supabase/03_confusion_matrix.sql test-set confusion matrices for the Model page (run after 02)
+  supabase/04_realtime.sql         live updates: new scans show up on the dashboard right away
   dashboard/             the admin website (plain HTML, CSS, JavaScript)
     index.html
     css/style.css
     js/config.js         <- put your Supabase URL and key here
+    js/i18n.js           English and Bahasa Melayu text
     js/app.js
     assets/logo.svg
+    assets/login-bg.mp4 / .jpg        login background video and its first frame
     assets/confusion_matrix*.png      original Colab figures (shown only if the database has no matrix)
 ```
 
