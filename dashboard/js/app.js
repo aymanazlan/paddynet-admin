@@ -120,11 +120,23 @@
   function showLogin(message) {
     $("app-view").hidden = true;
     $("login-view").hidden = false;
+    playLoginVideo(true);
     $("login-error").hidden = !message;
     $("login-error").textContent = message || "";
     if (!configured) {
       $("config-warning").hidden = false;
       $("login-button").disabled = true;
+    }
+  }
+
+  // Background video only plays while the login page is showing (saves battery and CPU)
+  function playLoginVideo(on) {
+    const video = $("login-video");
+    if (!video) return;
+    if (on && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
     }
   }
 
@@ -139,6 +151,7 @@
     $("signed-in-as").textContent = `Signed in as ${session.user.email}`;
     $("login-view").hidden = true;
     $("app-view").hidden = false;
+    playLoginVideo(false);
     await loadData();
     goTo(location.hash.slice(1) || "overview");
   }

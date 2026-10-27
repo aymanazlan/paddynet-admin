@@ -28,13 +28,18 @@
 
   <!-- Login -->
   <main id="login-view" class="login" hidden>
+    <video id="login-video" class="login-bg" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+      <source src="assets/login-bg.webm" type="video/webm">
+      <source src="assets/login-bg.mp4" type="video/mp4">
+    </video>
+    <div class="login-overlay" aria-hidden="true"></div>
     <form id="login-form" class="login-card">
       <div class="brand brand-lg">
         <svg class="logo"><use href="#logo"/></svg>
         <span class="wordmark">Paddy<b>Net</b></span>
       </div>
       <h1>Admin dashboard</h1>
-      <p class="muted">Sign in with the admin account you made in Supabase.</p>
+      <p class="muted login-sub">Sign in with the admin account you made in Supabase.</p>
       <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
       <label>Password<input id="login-password" type="password" autocomplete="current-password" required></label>
       <button type="submit" class="btn btn-primary" id="login-button">Sign in</button>
