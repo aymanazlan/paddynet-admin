@@ -14,6 +14,8 @@
   const PAGES = ["overview", "trends", "map", "alerts", "scans", "model", "profile"];
   const SCAN_COLUMNS =
     "id,device_id,label,confidence,used_tta,inference_ms,scanned_at,received_at,area,latitude,longitude,app_version,model_version";
+  // Added by supabase/05_feedback.sql; the dashboard still works without them
+  const FEEDBACK_COLUMNS = "feedback,true_label,feedback_at";
   const PAGE_SIZE = 25;
   const LOW_CONFIDENCE = 0.6;
   const DAY = 24 * 60 * 60 * 1000;
@@ -403,11 +405,15 @@
   }
 
   // ---------- data ----------
+  let hasFeedback = true;
   async function fetchAllScans() {
     const out = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await db.from("scans").select(SCAN_COLUMNS)
+      const columns = hasFeedback ? `${SCAN_COLUMNS},${FEEDBACK_COLUMNS}` : SCAN_COLUMNS;
+      const { data, error } = await db.from("scans").select(columns)
         .order("scanned_at", { ascending: false }).range(from, from + 999);
+      // 42703 = column does not exist: 05_feedback.sql has not been run yet
+      if (error && error.code === "42703" && hasFeedback) { hasFeedback = false; from -= 1000; continue; }
       if (error) throw error;
       out.push(...data);
       if (data.length < 1000 || out.length >= 100000) break;
@@ -474,6 +480,7 @@
       rtChannel = db.channel("scans-live")
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "scans" }, (payload) => onScanInserted(payload.new))
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "scans" }, (payload) => onScanDeleted(payload.old))
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scans" }, (payload) => onScanUpdated(payload.new))
         .subscribe((status) => {
           state.realtime = status === "SUBSCRIBED";
           updateLive();
@@ -496,6 +503,14 @@
     markFresh(scan.id);
     toast(t("rt.new", { label: labelName(scan.label), area: scan.area || t("ov.noArea") }));
     scheduleRender(true);
+  }
+  function onScanUpdated(scan) {
+    if (!scan || !scan.id) return;
+    const i = state.scans.findIndex((s) => s.id === scan.id);
+    if (i < 0) return;
+    state.scans[i] = { ...state.scans[i], ...scan };
+    markFresh(scan.id);
+    scheduleRender(false);
   }
   function onScanDeleted(old) {
     if (!old || !old.id) return;
@@ -742,10 +757,18 @@
       `<span><span class="legend-line" style="background:${red}"></span>${escapeHtml(t("ov.withDisease"))}</span>`;
     $("daily-chart").setAttribute("aria-label", $("daily-title").textContent);
     const labels = buckets.map((b) => new Date(b).toLocaleDateString(loc(), { day: "numeric", month: "short" }));
-    const datasets = [
-      { label: t("ov.all"), data: all, borderColor: primary, backgroundColor: `${primary}29`, fill: true },
-      { label: t("ov.withDisease"), data: sick, borderColor: red, backgroundColor: "transparent", fill: false },
-    ].map((d) => ({ ...d, cubicInterpolationMode: "monotone", borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4 }));
+    // With only a few active days a smooth line looks like one big spike, so use bars instead
+    const type = all.filter((n) => n > 0).length < 6 ? "bar" : "line";
+    const datasets = type === "bar"
+      ? [
+          { label: t("ov.all"), data: all, backgroundColor: primary },
+          { label: t("ov.withDisease"), data: sick, backgroundColor: red },
+        ].map((d) => ({ ...d, borderRadius: 4, maxBarThickness: 16, categoryPercentage: 0.8, barPercentage: 0.9 }))
+      : [
+          { label: t("ov.all"), data: all, borderColor: primary, backgroundColor: `${primary}29`, fill: true },
+          { label: t("ov.withDisease"), data: sick, borderColor: red, backgroundColor: "transparent", fill: false },
+        ].map((d) => ({ ...d, cubicInterpolationMode: "monotone", borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4 }));
+    if (dailyChart && dailyChart.config.type !== type) { dailyChart.destroy(); dailyChart = null; }
     if (dailyChart) {
       dailyChart.data.labels = labels;
       dailyChart.data.datasets = datasets;
@@ -756,7 +779,7 @@
       return;
     }
     dailyChart = new Chart($("daily-chart"), {
-      type: "line",
+      type,
       data: { labels, datasets },
       options: {
         responsive: true,
@@ -1079,7 +1102,7 @@
     state.scanPage = Math.min(state.scanPage, pages - 1);
     const pageRows = rows.slice(state.scanPage * PAGE_SIZE, (state.scanPage + 1) * PAGE_SIZE);
     $("scan-table").querySelector("tbody").innerHTML = pageRows.length === 0
-      ? `<tr><td colspan="8" class="empty">${escapeHtml(t("sc.none"))}</td></tr>`
+      ? `<tr><td colspan="9" class="empty">${escapeHtml(t("sc.none"))}</td></tr>`
       : pageRows.map((s) => `<tr data-scan="${escapeHtml(s.id)}">
           <td>${fmtDateTime(s.scanned_at)}</td>
           <td>${swatch(s.label)}${escapeHtml(labelName(s.label))}</td>
@@ -1088,6 +1111,7 @@
           <td>${s.latitude != null ? `${s.latitude.toFixed(3)}, ${s.longitude.toFixed(3)}` : "–"}</td>
           <td>${s.used_tta ? t("yes") : t("no")}</td>
           <td>${escapeHtml(s.app_version || "–")}</td>
+          <td>${feedbackCell(s)}</td>
           <td><button class="btn btn-small btn-danger" data-delete="${escapeHtml(s.id)}" type="button">${escapeHtml(t("sc.delete"))}</button></td>
         </tr>`).join("");
     $("s-page").textContent = t("sc.page", { n: fmtInt(rows.length), p: state.scanPage + 1, pages });
@@ -1122,6 +1146,7 @@
       [t("d.location"), hasLoc ? `${s.latitude.toFixed(3)}, ${s.longitude.toFixed(3)}` : "–"],
       [t("d.tta"), s.used_tta ? t("yes") : t("no")],
       [t("d.speed"), s.inference_ms != null ? `${s.inference_ms} ms` : "–"],
+      [t("d.farmer"), feedbackText(s)],
       [t("d.app"), escapeHtml(s.app_version || "–")],
       [t("d.model"), escapeHtml(s.model_version || "–")],
       [t("d.phone"), `<code>${escapeHtml(String(s.device_id || "–").slice(0, 8))}</code>`],
@@ -1152,7 +1177,7 @@
   function downloadCsv() {
     const rows = filteredScans();
     const head = ["scanned_at", "received_at", "label", "confidence", "used_tta", "inference_ms", "area",
-      "latitude", "longitude", "app_version", "model_version", "device_id", "id"];
+      "latitude", "longitude", "app_version", "model_version", "feedback", "true_label", "feedback_at", "device_id", "id"];
     const cell = (v) => {
       const s = v == null ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -1164,6 +1189,65 @@
     a.download = `paddynet-scans-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ---------- farmer feedback ("Was this result right?" in the app) ----------
+  function feedbackText(s) {
+    if (s.feedback === "correct") return escapeHtml(t("fb.correct"));
+    if (s.feedback === "wrong") {
+      return escapeHtml(s.true_label ? t("fb.wrongIs", { label: labelName(s.true_label) }) : t("fb.wrongUnsure"));
+    }
+    return escapeHtml(t("fb.none"));
+  }
+  function feedbackCell(s) {
+    if (s.feedback === "correct") return `<span class="fb fb-ok" title="${feedbackText(s)}">✓ ${escapeHtml(t("yes"))}</span>`;
+    if (s.feedback === "wrong") {
+      return `<span class="fb fb-bad" title="${feedbackText(s)}">✗ ${escapeHtml(s.true_label ? labelName(s.true_label) : t("fb.unsureShort"))}</span>`;
+    }
+    return `<span class="muted">–</span>`;
+  }
+
+  /** Accuracy in real fields, from the scans farmers answered. */
+  function renderFieldAccuracy() {
+    const el = $("field-accuracy");
+    if (!hasFeedback) { el.innerHTML = `<p class="muted">${t("fb.needSql")}</p>`; return; }
+    const scans = scansInRange();
+    const answered = scans.filter((s) => s.feedback === "correct" || s.feedback === "wrong");
+    if (!answered.length) { el.innerHTML = `<p class="empty">${escapeHtml(t("fb.noneYet"))}</p>`; return; }
+    const right = answered.filter((s) => s.feedback === "correct").length;
+    const current = state.models.find((m) => m.is_current) || state.models[0];
+    const rows = LABELS.map((label) => {
+      const a = answered.filter((s) => s.label === label);
+      const ok = a.filter((s) => s.feedback === "correct").length;
+      return { label, n: a.length, ok };
+    });
+    // What farmers said instead, when they said the result was wrong
+    const swaps = countBy(answered.filter((s) => s.feedback === "wrong"),
+      (s) => `${s.label}→${s.true_label || ""}`);
+    const swapList = [...swaps.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => {
+      const [said, real] = k.split("→");
+      return `<li>${swatch(said)}${escapeHtml(labelName(said))} → ${real ? `${swatch(real)}${escapeHtml(labelName(real))}` : escapeHtml(t("fb.unsureShort"))}
+        <span class="muted">(${fmtInt(n)})</span></li>`;
+    }).join("");
+    el.innerHTML = `
+      <div class="tiles tiles-3">
+        <div class="tile"><span class="tile-label">${escapeHtml(t("fb.fieldAcc"))}</span><span class="tile-value">${fmtPct(right / answered.length)}</span>
+          <span class="tile-sub">${escapeHtml(t("fb.ofAnswered", { a: fmtInt(right), b: fmtInt(answered.length) }))}</span></div>
+        <div class="tile"><span class="tile-label">${escapeHtml(t("m.tta"))}</span><span class="tile-value">${current && current.tta_accuracy != null ? fmtPct(current.tta_accuracy, 2) : "–"}</span>
+          <span class="tile-sub">${escapeHtml(t("fb.testSet"))}</span></div>
+        <div class="tile"><span class="tile-label">${escapeHtml(t("fb.answered"))}</span><span class="tile-value">${fmtPct(answered.length / scans.length, 0)}</span>
+          <span class="tile-sub">${escapeHtml(t("fb.ofScans", { a: fmtInt(answered.length), b: fmtInt(scans.length) }))}</span></div>
+      </div>
+      <div class="grid-2 fb-grid">
+        <table class="table">
+          <thead><tr><th>${escapeHtml(t("fb.modelSaid"))}</th><th class="num">${escapeHtml(t("fb.answers"))}</th><th class="num">${escapeHtml(t("fb.right"))}</th><th class="num">${escapeHtml(t("fb.accuracy"))}</th></tr></thead>
+          <tbody>${rows.map((r) => `<tr><td>${swatch(r.label)}${escapeHtml(labelName(r.label))}</td><td class="num">${fmtInt(r.n)}</td>
+            <td class="num">${fmtInt(r.ok)}</td><td class="num">${r.n ? fmtPct(r.ok / r.n, 0) : "–"}</td></tr>`).join("")}</tbody>
+        </table>
+        <div><p class="risk-title">${escapeHtml(t("fb.saidInstead"))}</p>
+          ${swapList ? `<ul class="list fb-swaps">${swapList}</ul>` : `<p class="muted small">${escapeHtml(t("fb.noWrong"))}</p>`}</div>
+      </div>
+      <p class="muted small fb-note">${escapeHtml(t("fb.note", { n: fmtInt(answered.length) }))}</p>`;
   }
 
   // ---------- model & system ----------
@@ -1197,6 +1281,7 @@
     }
 
     renderConfusion(current);
+    renderFieldAccuracy();
 
     // In the field
     const scans = scansInRange();

@@ -329,7 +329,7 @@
               </div>
             </div>
             <table class="table table-click" id="scan-table">
-              <thead><tr><th data-i18n="th.date">Date</th><th data-i18n="th.result">Result</th><th class="num" data-i18n="th.conf">Confidence</th><th data-i18n="th.area">Area</th><th data-i18n="th.location">Location</th><th data-i18n="th.tta">TTA</th><th data-i18n="th.app">App</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="th.date">Date</th><th data-i18n="th.result">Result</th><th class="num" data-i18n="th.conf">Confidence</th><th data-i18n="th.area">Area</th><th data-i18n="th.location">Location</th><th data-i18n="th.tta">TTA</th><th data-i18n="th.app">App</th><th data-i18n="th.farmer">Farmer said</th><th></th></tr></thead>
               <tbody></tbody>
             </table>
             <div class="pager">
@@ -374,6 +374,11 @@
               <h2 data-i18n="m.system">System</h2>
               <dl class="facts" id="system-facts"></dl>
             </div>
+          </div>
+          <div class="card">
+            <h2 data-i18n="fb.title">Accuracy in real fields (farmer answers)</h2>
+            <p class="muted small" data-i18n="fb.intro">After each scan the app asks the farmer "Was this result right?". This is the share of answered scans the farmer said were right.</p>
+            <div id="field-accuracy"></div>
           </div>
           <div class="grid-2">
             <div class="card">

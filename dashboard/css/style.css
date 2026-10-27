@@ -490,6 +490,14 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-
 .table tfoot td { font-weight: 800; border-top: 1px solid var(--border); border-bottom: none; }
 .cm { width: 100%; max-width: 520px; border-radius: 8px; background: #fff; display: block; }
 
+/* Farmer feedback */
+.fb { font-weight: 800; font-size: 13px; white-space: nowrap; }
+.fb-ok { color: var(--good); }
+.fb-bad { color: var(--danger); }
+.fb-grid { margin-top: 14px; }
+.fb-swaps li { display: block; }
+.fb-note { margin: 12px 0 0; }
+
 /* Profile */
 .profile-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .profile-name { font-size: 20px; }

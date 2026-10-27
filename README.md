@@ -7,6 +7,7 @@ paddynet-admin/
   supabase/02_upload_function.sql  submit_scans(): how the app adds scans (run after 01)
   supabase/03_confusion_matrix.sql test-set confusion matrices for the Model page (run after 02)
   supabase/04_realtime.sql         live updates: new scans show up on the dashboard right away
+  supabase/05_feedback.sql         farmer answers to "Was this result right?" (field accuracy)
   dashboard/             the admin website (plain HTML, CSS, JavaScript)
     index.html
     css/style.css

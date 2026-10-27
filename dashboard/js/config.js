@@ -3,5 +3,5 @@
 window.PADDYNET_CONFIG = {
   supabaseUrl: "https://myrmybfbuashwvocytpi.supabase.co",
   supabaseKey: "sb_publishable_qfAqN32A91_8x_j5PMsDcg_4mVMCoCs",
-  dashboardVersion: "1.1",
+  dashboardVersion: "1.2",
 };
