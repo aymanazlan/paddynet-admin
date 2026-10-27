@@ -118,9 +118,11 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-
   background: radial-gradient(ellipse at 50% 110%, #6B5A1E 0%, #1F4A2A 45%, #0A2624 100%) center / cover;
 }
 .login-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+/* Card on the left; the overlay is darker behind it and lighter on the right so the waving paddy shows */
+.login { justify-items: start; padding-left: clamp(16px, 8vw, 140px); }
 .login-overlay {
   position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(180deg, rgba(4, 18, 16, 0.58) 0%, rgba(4, 18, 16, 0.68) 55%, rgba(4, 18, 16, 0.85) 100%);
+  background: linear-gradient(90deg, rgba(4, 18, 16, 0.78) 0%, rgba(4, 18, 16, 0.55) 40%, rgba(4, 18, 16, 0.18) 75%, rgba(4, 18, 16, 0.10) 100%);
 }
 .login-card {
   position: relative; z-index: 2;
@@ -150,31 +152,9 @@ label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-
 .login-card .btn-primary { padding: 11px 14px; font-size: 15px; margin-top: 4px; }
 .login-card .btn-primary:hover { box-shadow: 0 8px 22px rgba(155, 225, 93, 0.30); }
 
-/* Design 2: card on the left, overlay lighter on the right so the waving paddy shows */
-.login.look-2 { justify-items: start; padding-left: clamp(16px, 8vw, 140px); }
-.login.look-2 .login-overlay {
-  background: linear-gradient(90deg, rgba(4, 18, 16, 0.78) 0%, rgba(4, 18, 16, 0.55) 40%, rgba(4, 18, 16, 0.18) 75%, rgba(4, 18, 16, 0.10) 100%);
-}
-
-/* Temporary design switcher (remove after choosing) */
-.look-switch {
-  position: absolute; z-index: 3; right: 16px; bottom: 16px;
-  display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px;
-  background: rgba(4, 18, 16, 0.55); border: 1px solid var(--glass-border); border-radius: 999px;
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap;
-}
-.look-switch button {
-  font: inherit; color: var(--text); background: transparent; border: 0; border-radius: 999px;
-  padding: 5px 12px; cursor: pointer; white-space: nowrap; transition: background-color .15s ease;
-}
-.look-switch button:hover { background: rgba(255, 255, 255, 0.12); }
-.look-switch button.active { background: var(--primary); color: var(--primary-text); }
-
 @media (max-width: 820px) {
-  .login.look-2 { justify-items: center; padding-left: 16px; }
-  .login.look-2 .login-overlay { background: rgba(4, 18, 16, 0.6); }
-  .look-switch { left: 50%; right: auto; transform: translateX(-50%); }
+  .login { justify-items: center; padding-left: 16px; }
+  .login-overlay { background: rgba(4, 18, 16, 0.6); }
 }
 @media (prefers-reduced-motion: reduce) {
   .btn, input, select { transition: none; }
