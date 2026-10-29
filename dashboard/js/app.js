@@ -17,7 +17,7 @@
   // Added by supabase/05_feedback.sql; the dashboard still works without them
   const FEEDBACK_COLUMNS = "feedback,true_label,feedback_at";
   const PAGE_SIZE = 25;
-  const LOW_CONFIDENCE = 0.6;
+  const LOW_CONFIDENCE = 0.7;  // same as the app's "Not sure, retake" threshold
   const DAY = 24 * 60 * 60 * 1000;
   const IDLE_WARNING_S = 60;
   const DEFAULT_SPOT = { name: "Sekinchan, Selangor", lat: 3.503, lng: 101.103 };
@@ -1297,7 +1297,7 @@
       : facts([
           [t("tile.scans"), fmtInt(scans.length)],
           [t("m.avgConf"), fmtPct(average(conf))],
-          [t("m.lowConf"), t("m.lowVal", { p: fmtPct(conf.filter((c) => c < LOW_CONFIDENCE).length / conf.length), t: LOW_CONFIDENCE * 100 })],
+          [t("m.lowConf"), t("m.lowVal", { p: fmtPct(conf.filter((c) => c < LOW_CONFIDENCE).length / conf.length), t: Math.round(LOW_CONFIDENCE * 100) })],
           [t("m.confBy"), perLabel],
           [t("m.ttaOn"), fmtPct(scans.filter((s) => s.used_tta).length / scans.length, 0)],
           [t("m.speedTta"), tta.length ? t("m.median", { ms: Math.round(median(tta)) }) : "–"],
@@ -1361,10 +1361,15 @@
     $("cm-caption").textContent = t("m.cm", { mode: tta ? t("m.cmTta") : t("m.cmSingle") });
     const matrix = model && (tta ? model.confusion_matrix_tta : model.confusion_matrix);
     const valid = Array.isArray(matrix) && matrix.length === LABELS.length && matrix.every((r) => Array.isArray(r) && r.length === LABELS.length);
-    $("cm-images").hidden = valid;
+    // The saved picture is v1's TTA matrix, so only fall back to it for v1
+    const hasImage = !!model && model.version === "mnv4s-v1";
+    $("cm-images").hidden = valid || !hasImage;
     $("cm-table").hidden = !valid;
     $("class-metrics").hidden = !valid;
-    if (!valid) return;
+    if (!valid) {
+      if (!hasImage) $("cm-caption").textContent = t("m.cmMissing");
+      return;
+    }
 
     const n = LABELS.length;
     const rowSum = matrix.map((r) => r.reduce((a, b) => a + b, 0));
