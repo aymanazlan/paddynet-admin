@@ -8,6 +8,7 @@ paddynet-admin/
   supabase/03_confusion_matrix.sql test-set confusion matrices for the Model page (run after 02)
   supabase/04_realtime.sql         live updates: new scans show up on the dashboard right away
   supabase/05_feedback.sql         farmer answers to "Was this result right?" (field accuracy)
+  supabase/06_model_v2.sql         model v2 (mnv4s-v2) row, made the current model
   dashboard/             the admin website (plain HTML, CSS, JavaScript)
     index.html
     css/style.css
